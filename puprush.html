@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PUP Rush: Space Battle</title>
+    <style>
+        /* 폰트 임포트: 레트로 영문 폰트 + 깔끔한 한국어 고딕 폰트 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            /* 기본은 레트로, 한국어는 고딕 */
+            font-family: 'Press Start 2P', 'Noto Sans KR', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 한국어 전용 클래스 (고딕체 강제) */
+        .kr-text, .kr-font {
+            font-family: 'Noto Sans KR', sans-serif !important;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            max-height: 800px;
+            background: linear-gradient(to bottom, #000011, #0a0a2a);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .hud-text {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .pup-score {
+            color: #ffd700;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9); /* 배경을 조금 더 어둡게 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 화려한 타이틀 애니메이션 */
+        @keyframes neonPulse {
+            0% { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0000ff; }
+            50% { text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 15px #0000ff; }
+            100% { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0000ff; }
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 36px;
+            color: #fff;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            animation: neonPulse 1.5s infinite alternate;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #0ff;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #ff0055;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        /* 입력 필드 스타일 */
+        .input-group {
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 300px;
+            text-align: left;
+        }
+
+        .input-label {
+            display: block;
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid #0ff;
+            border-radius: 5px;
+            color: #fff;
+            font-family: 'Noto Sans KR', sans-serif; /* 입력 폰트는 고딕 */
+            font-size: 16px;
+            text-align: center;
+            outline: none;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        input[type="text"]::placeholder {
+            color: #555;
+        }
+
+        button {
+            background: linear-gradient(180deg, #0ff 0%, #008b8b 100%);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 0 15px #0ff;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-transform: uppercase;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 5px #0ff;
+        }
+        
+        button:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .leaderboard-box {
+            background: rgba(20, 20, 40, 0.95);
+            border: 2px solid #0ff;
+            padding: 20px;
+            width: 90%;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .lb-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-family: 'Press Start 2P', cursive;
+            color: #0ff;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        .lb-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 12px;
+            border-bottom: 1px dashed rgba(255,255,255,0.2);
+            padding-bottom: 5px;
+            font-family: 'Noto Sans KR', sans-serif; /* 리더보드 내용은 고딕으로 깔끔하게 */
+        }
+
+        .lb-row.highlight {
+            color: #ffd700;
+            font-weight: 700;
+            border-bottom: 1px solid #ffd700;
+        }
+
+        .reward-text {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 15px;
+            line-height: 1.6;
+            max-width: 90%;
+            word-break: keep-all;
+        }
+
+        /* 로딩 스피너 */
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #0ff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 15;
+        }
+        
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            user-select: none;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #fff;
+            color: #fff;
+        }
+
+        #audio-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 8px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+
+        #audio-controls button {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            min-width: 32px;
+            font-size: 16px;
+            box-shadow: none;
+        }
+
+        #audio-controls input[type="range"] {
+            width: 80px;
+        }
+
+        #main-logo {
+            width: 220px;
+            max-width: 70%;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <audio id="bgm" src="https://raw.githubusercontent.com/0xwhalelabs/puprush/main/PUP%20BGM.mp3" loop></audio>
+
+        <div id="audio-controls">
+            <button id="btn-mute" type="button">🔊</button>
+            <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.5">
+        </div>
+
+        <!-- UI HUD -->
+        <div id="ui-layer" class="ui-layer hidden">
+            <div class="hud-text">TIME: <span id="time-display">30</span></div>
+            <div class="hud-text pup-score">PUP: <span id="score-display">0</span></div>
+        </div>
+
+        <!-- 시작 화면 -->
+        <div id="start-screen" class="screen">
+            <img id="main-logo" src="https://raw.githubusercontent.com/0xwhalelabs/puprush/main/main.png" alt="PUP Rush Main Logo">
+            <h1>PUP RUSH</h1>
+            <div class="subtitle">SPACE BATTLE</div>
+            
+            <div class="input-group">
+                <label for="nickname-input" class="input-label kr-font">본인의 Telegram 닉네임을 입력해주세요</label>
+                <input type="text" id="nickname-input" placeholder="@username" maxlength="15">
+            </div>
+
+            <p class="kr-font" style="font-size:12px; color:#aaa; margin-bottom: 30px; line-height:1.6;">
+                방향키/터치로 이동<br>
+                코인 획득 (200 $PUP)<br>
+                미사일을 피하세요!
+                부정행위(비정상적인 점수 등)가 발견될 경우 스코어는 무효 처리됩니다.<br>
+                  서로 배려하면서 즐겁게 이벤트에 참여해주세요!
+            </p>
+            <button id="start-btn">GAME START</button>
+        </div>
+
+        <!-- 게임 오버 / 리더보드 화면 -->
+        <div id="game-over-screen" class="screen hidden">
+            <h2>GAME OVER</h2>
+            <div class="leaderboard-box">
+                <div class="lb-title">GLOBAL LEADERBOARD</div>
+                <div id="leaderboard-content">
+                    <div class="loader"></div>
+                </div>
+            </div>
+            <p class="reward-text">
+                * 가장 많은 PUP를 얻은 사람에게 실제 획득한 $PUP를 보내드립니다.
+            </p>
+            <button id="restart-btn" style="margin-top:20px;">RETRY</button>
+        </div>
+
+        <!-- 모바일 컨트롤 -->
+        <div id="mobile-controls">
+            <div class="control-btn" id="btn-left"></div>
+            <div class="control-btn" id="btn-right"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Game Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // =========================================================
+        // 0. Firebase 설정 및 초기화
+        // =========================================================
+        
+        // [중요] Firebase 콘솔에서 발급받은 실제 설정
+        const YOUR_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBb-z1y7_6cAm3CHnugEDcbnZhOOeUUFSw",
+            authDomain: "puprush.firebaseapp.com",
+            projectId: "puprush",
+            storageBucket: "puprush.firebasestorage.app",
+            messagingSenderId: "744335420656",
+            appId: "1:744335420656:web:2d4d3869eafc6d9a9ba635"
+        };
+
+        let db;
+        let auth;
+        let appId = 'default-app'; // GitHub 등에서는 'default-app' 사용
+        let currentUser = null;
+
+
+        async function initFirebase() {
+            try {
+                let firebaseConfig;
+
+                // 1. Canvas 환경 변수 확인 (여기서 미리보기할 때 사용)
+                if (typeof __firebase_config !== 'undefined') {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                } 
+                // 2. 사용자가 직접 입력한 설정 확인 (GitHub 등에 올릴 때 사용)
+                else if (YOUR_FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY_HERE") {
+                    firebaseConfig = YOUR_FIREBASE_CONFIG;
+                }
+
+                if (firebaseConfig) {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    // 익명 로그인
+                    const userCredential = await signInAnonymously(auth);
+                    currentUser = userCredential.user;
+                    console.log("Firebase Auth Success:", currentUser.uid);
+                } else {
+                    console.warn("Firebase config not found. Leaderboard will be local only.");
+                }
+            } catch (e) {
+                console.error("Firebase init error:", e);
+            }
+        }
+
+        // 앱 시작 시 Firebase 초기화
+        initFirebase();
+
+        // =========================================================
+        // 1. 이미지 자산 설정
+        // =========================================================
+        const ASSETS = {
+            player: "https://raw.githubusercontent.com/0xwhalelabs/puprush/main/hero.png", 
+            enemy: "https://raw.githubusercontent.com/0xwhalelabs/puprush/main/fudbox.png",  
+            coin: null    
+        };
+
+        const images = {};
+        function loadImages() {
+            for (const key in ASSETS) {
+                if (ASSETS[key]) {
+                    const img = new Image();
+                    img.src = ASSETS[key];
+                    images[key] = img;
+                }
+            }
+        }
+        loadImages();
+
+        // =========================================================
+        // 2. 게임 변수 및 설정
+        // =========================================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            const container = document.getElementById('game-container');
+            if(container) {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let gameState = 'START';
+        let lastTime = 0;
+        let gameTime = 30;
+        let timerInterval = null;
+        let score = 0;
+        let playerNickname = 'Player'; // 기본 닉네임
+
+        // 난이도 관련 변수
+        let currentDifficulty = 1; 
+        let enemySpawnRate = 0.8;
+        
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        const bgmElement = document.getElementById('bgm');
+        const muteBtn = document.getElementById('btn-mute');
+        const volumeSlider = document.getElementById('volume-slider');
+        let isMuted = false;
+        let hasTriedAutoPlay = false;
+
+        function initAudio() {
+            if (!bgmElement) return;
+            bgmElement.volume = 0.5;
+
+            const tryPlay = () => {
+                if (hasTriedAutoPlay) return;
+                hasTriedAutoPlay = true;
+                bgmElement.play().catch(() => {});
+            };
+
+            window.addEventListener('load', tryPlay, { once: true });
+            document.addEventListener('click', tryPlay, { once: true });
+
+            if (muteBtn) {
+                muteBtn.addEventListener('click', () => {
+                    isMuted = !isMuted;
+                    bgmElement.muted = isMuted;
+                    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+                });
+            }
+
+            if (volumeSlider) {
+                volumeSlider.addEventListener('input', (e) => {
+                    const v = Number(e.target.value);
+                    bgmElement.volume = v;
+                    if (v === 0) {
+                        bgmElement.muted = true;
+                        isMuted = true;
+                        if (muteBtn) muteBtn.textContent = '🔇';
+                    } else {
+                        bgmElement.muted = false;
+                        isMuted = false;
+                        if (muteBtn) muteBtn.textContent = '🔊';
+                    }
+                });
+            }
+        }
+
+        // =========================================================
+        // 3. 게임 객체 클래스
+        // =========================================================
+
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 40;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - 80;
+                this.speed = 300;
+                this.color = '#00ff00';
+            }
+
+            update(dt) {
+                if (keys.ArrowLeft) this.x -= this.speed * dt;
+                if (keys.ArrowRight) this.x += this.speed * dt;
+
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+            }
+
+            draw() {
+                if (images.player && images.player.complete) {
+                    ctx.drawImage(images.player, this.x, this.y, this.width, this.height);
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y);
+                    ctx.lineTo(this.x, this.y + this.height);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.fill();
+                    // 엔진 불꽃
+                    ctx.fillStyle = `rgba(255, 100, 0, ${Math.random()})`;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 10, this.y + this.height);
+                    ctx.lineTo(this.x + 20, this.y + this.height + 15);
+                    ctx.lineTo(this.x + 30, this.y + this.height);
+                    ctx.fill();
+                }
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                this.width = 30;
+                this.height = 30;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = -50;
+                
+                const speedMultiplier = 1 + (currentDifficulty * 0.1); 
+                this.speedY = (100 + Math.random() * 100) * speedMultiplier;
+                this.speedX = (Math.random() - 0.5) * 50 * speedMultiplier;
+                
+                this.color = '#ff0055';
+                this.shootTimer = 0;
+                
+                this.shootInterval = Math.max(0.5, (1.5 + Math.random() * 2) - (currentDifficulty * 0.05));
+            }
+
+            update(dt) {
+                this.y += this.speedY * dt;
+                this.x += this.speedX * dt;
+                this.shootTimer += dt;
+
+                if (this.y > canvas.height) return false;
+
+                if (this.shootTimer > this.shootInterval) {
+                    this.shootTimer = 0;
+                    createEnemyBullet(this.x + this.width/2, this.y + this.height);
+                }
+                
+                if (this.x < 0 || this.x + this.width > canvas.width) this.speedX *= -1;
+
+                return true;
+            }
+
+            draw() {
+                if (images.enemy && images.enemy.complete) {
+                    ctx.drawImage(images.enemy, this.x, this.y, this.width, this.height);
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(this.x + 5, this.y + 10, 5, 5);
+                    ctx.fillRect(this.x + 20, this.y + 10, 5, 5);
+                }
+            }
+        }
+
+        class Coin {
+            constructor() {
+                this.size = 20;
+                this.x = Math.random() * (canvas.width - this.size);
+                this.y = -30;
+                this.speed = 150 + Math.random() * 150;
+                this.value = 200;
+            }
+
+            update(dt) {
+                this.y += this.speed * dt;
+                if (this.y > canvas.height) return false;
+                return true;
+            }
+
+            draw() {
+                if (images.coin && images.coin.complete) {
+                    ctx.drawImage(images.coin, this.x, this.y, this.size, this.size);
+                } else {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.size/2, this.y + this.size/2, this.size/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                    ctx.font = '12px "Noto Sans KR"';
+                    ctx.fillText('$', this.x + 6, this.y + 15);
+                }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.width = 6;
+                this.height = 15;
+                this.x = x - this.width/2;
+                this.y = y;
+                this.speed = 400 + (currentDifficulty * 10);
+                this.color = '#ff4444';
+            }
+
+            update(dt) {
+                this.y += this.speed * dt;
+                if (this.y > canvas.height) return false;
+                return true;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        // =========================================================
+        // 4. 게임 로직 관리
+        // =========================================================
+        let player;
+        let enemies = [];
+        let coins = [];
+        let bullets = [];
+        let stars = [];
+
+        function initStars() {
+            stars = [];
+            for(let i=0; i<60; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2.5,
+                    speed: 20 + Math.random() * 60,
+                    alpha: Math.random()
+                });
+            }
+        }
+
+        function createEnemyBullet(x, y) {
+            bullets.push(new Bullet(x, y));
+        }
+
+        function initGame() {
+            player = new Player();
+            enemies = [];
+            coins = [];
+            bullets = [];
+            score = 0;
+            gameTime = 30;
+            currentDifficulty = 0;
+            updateUI();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                gameTime--;
+                updateUI();
+                if (gameTime <= 0) {
+                    gameOver();
+                }
+            }, 1000);
+        }
+
+        function updateUI() {
+            const timeEl = document.getElementById('time-display');
+            const scoreEl = document.getElementById('score-display');
+            if(timeEl) timeEl.innerText = gameTime;
+            if(scoreEl) scoreEl.innerText = score;
+        }
+
+        let enemySpawnTimer = 0;
+        let coinSpawnTimer = 0;
+
+        function update(dt) {
+            let elapsed = 30 - gameTime;
+            currentDifficulty = elapsed; 
+
+            stars.forEach(star => {
+                star.y += star.speed * dt;
+                if (star.y > canvas.height) star.y = 0;
+                star.alpha += (Math.random() - 0.5) * 0.1;
+                if(star.alpha < 0.2) star.alpha = 0.2;
+                if(star.alpha > 1) star.alpha = 1;
+            });
+
+            player.update(dt);
+
+            enemySpawnRate = Math.max(0.3, 0.8 - (elapsed * 0.017));
+
+            enemySpawnTimer += dt;
+            if (enemySpawnTimer > enemySpawnRate) {
+                enemies.push(new Enemy());
+                enemySpawnTimer = 0;
+            }
+
+            coinSpawnTimer += dt;
+            if (coinSpawnTimer > 0.3) {
+                coins.push(new Coin());
+                coinSpawnTimer = 0;
+            }
+
+            enemies = enemies.filter(e => e.update(dt));
+            coins = coins.filter(c => c.update(dt));
+            bullets = bullets.filter(b => b.update(dt));
+
+            checkCollisions();
+        }
+
+        function checkCollisions() {
+            for (let i = coins.length - 1; i >= 0; i--) {
+                let c = coins[i];
+                if (
+                    player.x < c.x + c.size &&
+                    player.x + player.width > c.x &&
+                    player.y < c.y + c.size &&
+                    player.y + player.height > c.y
+                ) {
+                    score += c.value;
+                    coins.splice(i, 1);
+                    updateUI();
+                }
+            }
+
+            for (let b of bullets) {
+                if (rectIntersect(player, b)) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            for (let e of enemies) {
+                if (rectIntersect(player, e)) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+
+        function rectIntersect(r1, r2) {
+            let r2w = r2.width || r2.size;
+            let r2h = r2.height || r2.size;
+            let padding = 5; 
+            
+            return !(r2.x + padding > r1.x + r1.width - padding || 
+                     r2.x + r2w - padding < r1.x + padding || 
+                     r2.y + padding > r1.y + r1.height - padding || 
+                     r2.y + r2h - padding < r1.y + padding);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#000011';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            player.draw();
+            enemies.forEach(e => e.draw());
+            coins.forEach(c => c.draw());
+            bullets.forEach(b => b.draw());
+        }
+
+        function loop(timestamp) {
+            if (gameState !== 'PLAYING') return;
+
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (dt < 0.1) {
+                update(dt);
+                draw();
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            const input = document.getElementById('nickname-input');
+            const val = input.value.trim();
+            if (val) {
+                playerNickname = val;
+            } else {
+                playerNickname = 'Player';
+            }
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('ui-layer').classList.remove('hidden');
+            
+            if(isMobile()) {
+                document.getElementById('mobile-controls').style.display = 'flex';
+            }
+
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            initGame();
+            if (bgmElement) {
+                bgmElement.play().catch(() => {});
+            }
+            requestAnimationFrame(loop);
+        }
+
+        async function gameOver() {
+            if (gameState === 'GAMEOVER') return; // 중복 호출 방지
+            gameState = 'GAMEOVER';
+            clearInterval(timerInterval);
+            
+            document.getElementById('ui-layer').classList.add('hidden');
+            document.getElementById('mobile-controls').style.display = 'none';
+            document.getElementById('game-over-screen').classList.remove('hidden');
+
+            // 점수 저장 및 리더보드 갱신
+            await saveScoreAndLoadLeaderboard();
+        }
+
+        // =========================================================
+        // 5. Firebase 리더보드 로직
+        // =========================================================
+        
+        async function saveScoreAndLoadLeaderboard() {
+            const container = document.getElementById('leaderboard-content');
+            container.innerHTML = '<div class="loader"></div><div style="text-align:center; margin-top:10px; font-size:10px;">기록 저장 중...</div>';
+            
+            const restartBtn = document.getElementById('restart-btn');
+            restartBtn.disabled = true;
+
+            // 1. 내 점수 저장
+            if (db && currentUser) {
+                try {
+                    const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                    await addDoc(leaderboardRef, {
+                        name: playerNickname,
+                        score: score,
+                        createdAt: new Date().toISOString()
+                    });
+                    console.log("Score saved!");
+                } catch (e) {
+                    console.error("Error saving score:", e);
+                }
+            }
+
+            // 2. 전체 리더보드 불러오기
+            await fetchAndRenderLeaderboard();
+            restartBtn.disabled = false;
+        }
+
+        async function fetchAndRenderLeaderboard() {
+            const container = document.getElementById('leaderboard-content');
+            
+            if (!db) {
+                // DB 없을 경우(로컬 테스트 등)
+                container.innerHTML = '<div style="text-align:center; padding:10px;">DB 연결 실패<br>로컬 모드로 실행중(Firebase 키 없음)</div>';
+                return;
+            }
+
+            try {
+                // Rule 2 준수: 쿼리 없이 모든 데이터 가져와서 JS에서 정렬
+                const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                const snapshot = await getDocs(leaderboardRef);
+                
+                let scores = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if(data.name && data.score !== undefined) {
+                        scores.push(data);
+                    }
+                });
+
+                // 점수 내림차순 정렬
+                scores.sort((a, b) => b.score - a.score);
+
+                // 상위 10개만 표시
+                const topScores = scores.slice(0, 10);
+
+                let html = '';
+                if (topScores.length === 0) {
+                     html = '<div style="text-align:center; padding:10px; color:#aaa;">아직 기록이 없습니다.<br>첫 번째 챔피언이 되어보세요!</div>';
+                } else {
+                    topScores.forEach((s, index) => {
+                        // 현재 플레이어의 점수와 일치하고 이름도 같으면 하이라이트 (간단한 로직)
+                        // 주의: 완전히 고유한 식별은 아니지만 시각적으로 충분함
+                        const isMe = (s.name === playerNickname && s.score === score);
+                        const rowClass = isMe ? 'lb-row highlight' : 'lb-row';
+                        
+                        html += `
+                            <div class="${rowClass}">
+                                <span>${index + 1}. ${escapeHtml(s.name)}</span>
+                                <span>${s.score} $PUP</span>
+                            </div>
+                        `;
+                    });
+                }
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error("Error fetching leaderboard:", e);
+                container.innerHTML = '<div style="text-align:center; color:red;">리더보드 로딩 실패</div>';
+            }
+        }
+
+        // XSS 방지용 간단한 이스케이프 함수
+        function escapeHtml(text) {
+            if (!text) return text;
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // =========================================================
+        // 6. 입력 핸들링 & 배경용 애니메이션 루프
+        // =========================================================
+        window.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
+            if (e.code === 'ArrowRight') keys.ArrowRight = true;
+            if (e.code === 'Enter' && gameState === 'START') startGame();
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.ArrowLeft = false;
+            if (e.code === 'ArrowRight') keys.ArrowRight = false;
+        });
+
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
+        }
+
+        ['touchstart', 'mousedown'].forEach(evt => {
+            if(btnLeft) btnLeft.addEventListener(evt, (e) => { e.preventDefault(); keys.ArrowLeft = true; });
+            if(btnRight) btnRight.addEventListener(evt, (e) => { e.preventDefault(); keys.ArrowRight = true; });
+        });
+
+        ['touchend', 'mouseup'].forEach(evt => {
+            if(btnLeft) btnLeft.addEventListener(evt, (e) => { e.preventDefault(); keys.ArrowLeft = false; });
+            if(btnRight) btnRight.addEventListener(evt, (e) => { e.preventDefault(); keys.ArrowRight = false; });
+        });
+
+        const startBtn = document.getElementById('start-btn');
+        if(startBtn) startBtn.addEventListener('click', startGame);
+        
+        const restartBtn = document.getElementById('restart-btn');
+        if(restartBtn) restartBtn.addEventListener('click', () => {
+             startGame();
+        });
+
+        initAudio();
+        initStars();
+        function bgLoop() {
+            if (gameState === 'START' || gameState === 'GAMEOVER') {
+                ctx.fillStyle = '#000011';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                stars.forEach(star => {
+                    star.y += (star.speed * 0.5) * 0.016; 
+                    if (star.y > canvas.height) star.y = 0;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                    ctx.fill();
+                });
+            }
+            requestAnimationFrame(bgLoop);
+        }
+        bgLoop();
+
+    </script>
+</body>
+</html>
