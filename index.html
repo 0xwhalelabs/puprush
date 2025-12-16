@@ -491,6 +491,7 @@
         let gameStartTimestamp = null; // ms since epoch
         let lastPlayTimeSeconds = 0;   // duration of last run
         let score = 0;
+        let coinsCollected = 0;
         let playerNickname = 'Player'; // 기본 닉네임
 
         // 난이도 관련 변수
@@ -499,6 +500,7 @@
 
         // 한 게임(30초) 동안 나올 수 있는 합리적인 최대 점수 상한
         // 코인 스폰 속도(0.3초당 1개)와 동선 등을 고려해서 설정
+        const COIN_VALUE = 200;
         const MAX_VALID_SCORE = 20000;
 
         // 한 게임에서 생성 가능한 적 미사일(총알) 최대 개수
@@ -732,6 +734,7 @@
             bullets = [];
             totalBulletsFired = 0;
             score = 0;
+            coinsCollected = 0;
             gameTime = 30;
             currentDifficulty = 0;
             updateUI();
@@ -800,7 +803,8 @@
                     player.y < c.y + c.size &&
                     player.y + player.height > c.y
                 ) {
-                    score += c.value;
+                    coinsCollected++;
+                    score = coinsCollected * COIN_VALUE;
                     coins.splice(i, 1);
                     updateUI();
                 }
@@ -934,6 +938,7 @@
                         const leaderboardRef = collection(db, 'leaderboard');
                         await addDoc(leaderboardRef, {
                             name: playerNickname,
+                            coinsCollected: coinsCollected,
                             score: score,
                             playTimeSeconds: lastPlayTimeSeconds,
                             createdAt: new Date().toISOString()
