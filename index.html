@@ -889,7 +889,7 @@
             // 1. 내 점수 저장
             if (db && currentUser) {
                 try {
-                    const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                    const leaderboardRef = collection(db, 'leaderboard');
                     await addDoc(leaderboardRef, {
                         name: playerNickname,
                         score: score,
@@ -917,7 +917,7 @@
 
             try {
                 // Rule 2 준수: 쿼리 없이 모든 데이터 가져와서 JS에서 정렬
-                const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                const leaderboardRef = collection(db, 'leaderboard');
                 const snapshot = await getDocs(leaderboardRef);
                 
                 let scores = [];
