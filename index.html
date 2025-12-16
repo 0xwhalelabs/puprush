@@ -488,6 +488,8 @@
         let lastTime = 0;
         let gameTime = 30;
         let timerInterval = null;
+        let gameStartTimestamp = null; // ms since epoch
+        let lastPlayTimeSeconds = 0;   // duration of last run
         let score = 0;
         let playerNickname = 'Player'; // 기본 닉네임
 
@@ -879,6 +881,7 @@
             }
 
             gameState = 'PLAYING';
+            gameStartTimestamp = Date.now();
             lastTime = performance.now();
             initGame();
             if (bgmElement) {
@@ -894,6 +897,13 @@
             
             document.getElementById('ui-layer').classList.add('hidden');
             document.getElementById('mobile-controls').style.display = 'none';
+
+            if (gameStartTimestamp) {
+                const elapsedMs = Date.now() - gameStartTimestamp;
+                lastPlayTimeSeconds = Math.max(0, Math.round(elapsedMs / 1000));
+            } else {
+                lastPlayTimeSeconds = 0;
+            }
 
             const finalScoreEl = document.getElementById('final-score-value');
             if (finalScoreEl) {
@@ -925,6 +935,7 @@
                         await addDoc(leaderboardRef, {
                             name: playerNickname,
                             score: score,
+                            playTimeSeconds: lastPlayTimeSeconds,
                             createdAt: new Date().toISOString()
                         });
                         console.log("Score saved!");
