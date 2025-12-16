@@ -338,18 +338,18 @@
             <div class="subtitle">SPACE BATTLE</div>
             
             <div class="input-group">
-                <label for="nickname-input" class="input-label kr-font">본인의 Telegram 닉네임을 입력해주세요</label>
+                <label for="nickname-input" class="input-label kr-font">Enter your Telegram username</label>
                 <input type="text" id="nickname-input" placeholder="@username" maxlength="15">
             </div>
 
             <p class="kr-font" style="font-size:12px; color:#aaa; margin-bottom: 30px; line-height:1.6;">
-                방향키/터치로 이동<br>
-                코인 획득 (200 $PUP)<br>
-                미사일을 피하세요!
-                부정행위(비정상적인 점수 등)가 발견될 경우 스코어는 무효 처리됩니다.<br>
-                  서로 배려하면서 즐겁게 이벤트에 참여해주세요!
+                Move with arrow keys / touch<br>
+                Collect coins (200 $PUP each)<br>
+                Dodge incoming missiles!<br>
+                Any abnormal or exploited scores will be invalidated.<br>
+                Please play fair and enjoy the event together!
             </p>
-            <button id="start-btn">GAME START</button>
+            <button id="start-btn">START GAME</button>
         </div>
 
         <!-- 게임 오버 / 리더보드 화면 -->
@@ -362,7 +362,7 @@
                 </div>
             </div>
             <p class="reward-text">
-                * 가장 많은 PUP를 얻은 사람에게 실제 획득한 $PUP를 보내드립니다.
+                * The player who earns the most PUP will receive the same amount of real $PUP.
             </p>
             <button id="restart-btn" style="margin-top:20px;">RETRY</button>
         </div>
@@ -481,6 +481,13 @@
         // 난이도 관련 변수
         let currentDifficulty = 1; 
         let enemySpawnRate = 0.8;
+
+        // 한 게임(30초) 동안 나올 수 있는 합리적인 최대 점수 상한
+        // 코인 스폰 속도(0.3초당 1개)와 동선 등을 고려해서 설정
+        const MAX_VALID_SCORE = 20000;
+
+        // 한 게임에서 생성 가능한 적 미사일(총알) 최대 개수
+        const MAX_BULLETS_PER_GAME = 52;
         
         const keys = {
             ArrowLeft: false,
@@ -600,7 +607,10 @@
 
                 if (this.shootTimer > this.shootInterval) {
                     this.shootTimer = 0;
-                    createEnemyBullet(this.x + this.width/2, this.y + this.height);
+                    if (totalBulletsFired < MAX_BULLETS_PER_GAME) {
+                        createEnemyBullet(this.x + this.width/2, this.y + this.height);
+                        totalBulletsFired++;
+                    }
                 }
                 
                 if (this.x < 0 || this.x + this.width > canvas.width) this.speedX *= -1;
@@ -680,6 +690,7 @@
         let enemies = [];
         let coins = [];
         let bullets = [];
+        let totalBulletsFired = 0;
         let stars = [];
 
         function initStars() {
@@ -704,6 +715,7 @@
             enemies = [];
             coins = [];
             bullets = [];
+            totalBulletsFired = 0;
             score = 0;
             gameTime = 30;
             currentDifficulty = 0;
@@ -881,21 +893,25 @@
         
         async function saveScoreAndLoadLeaderboard() {
             const container = document.getElementById('leaderboard-content');
-            container.innerHTML = '<div class="loader"></div><div style="text-align:center; margin-top:10px; font-size:10px;">기록 저장 중...</div>';
+            container.innerHTML = '<div class="loader"></div><div style="text-align:center; margin-top:10px; font-size:10px;">Saving your record...</div>';
             
             const restartBtn = document.getElementById('restart-btn');
             restartBtn.disabled = true;
 
-            // 1. 내 점수 저장
+            // 1. 내 점수 저장 (비정상적으로 큰 점수는 저장하지 않음)
             if (db && currentUser) {
                 try {
-                    const leaderboardRef = collection(db, 'leaderboard');
-                    await addDoc(leaderboardRef, {
-                        name: playerNickname,
-                        score: score,
-                        createdAt: new Date().toISOString()
-                    });
-                    console.log("Score saved!");
+                    if (score <= MAX_VALID_SCORE) {
+                        const leaderboardRef = collection(db, 'leaderboard');
+                        await addDoc(leaderboardRef, {
+                            name: playerNickname,
+                            score: score,
+                            createdAt: new Date().toISOString()
+                        });
+                        console.log("Score saved!");
+                    } else {
+                        console.warn("Score too large, not saving:", score);
+                    }
                 } catch (e) {
                     console.error("Error saving score:", e);
                 }
@@ -911,7 +927,7 @@
             
             if (!db) {
                 // DB 없을 경우(로컬 테스트 등)
-                container.innerHTML = '<div style="text-align:center; padding:10px;">DB 연결 실패<br>로컬 모드로 실행중(Firebase 키 없음)</div>';
+                container.innerHTML = '<div style="text-align:center; padding:10px;">Failed to connect to database.<br>Running in local mode (no Firebase key).</div>';
                 return;
             }
 
@@ -924,7 +940,10 @@
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     if(data.name && data.score !== undefined) {
-                        scores.push(data);
+                        // 비정상적으로 큰 점수는 리더보드 계산에서 제외
+                        if (typeof data.score === 'number' && data.score <= MAX_VALID_SCORE) {
+                            scores.push(data);
+                        }
                     }
                 });
 
@@ -936,7 +955,7 @@
 
                 let html = '';
                 if (topScores.length === 0) {
-                     html = '<div style="text-align:center; padding:10px; color:#aaa;">아직 기록이 없습니다.<br>첫 번째 챔피언이 되어보세요!</div>';
+                     html = '<div style="text-align:center; padding:10px; color:#aaa;">No records yet.<br>Be the first champion!</div>';
                 } else {
                     topScores.forEach((s, index) => {
                         // 현재 플레이어의 점수와 일치하고 이름도 같으면 하이라이트 (간단한 로직)
@@ -956,7 +975,7 @@
 
             } catch (e) {
                 console.error("Error fetching leaderboard:", e);
-                container.innerHTML = '<div style="text-align:center; color:red;">리더보드 로딩 실패</div>';
+                container.innerHTML = '<div style="text-align:center; color:red;">Failed to load leaderboard</div>';
             }
         }
 
