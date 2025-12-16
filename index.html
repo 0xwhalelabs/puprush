@@ -355,6 +355,9 @@
         <!-- 게임 오버 / 리더보드 화면 -->
         <div id="game-over-screen" class="screen hidden">
             <h2>GAME OVER</h2>
+            <p class="reward-text" id="final-score-text" style="margin-bottom: 10px;">
+                Your score is <span id="final-score-value">0</span> $PUP. Try to reach the top 2 and win PUP tokens!
+            </p>
             <div class="leaderboard-box">
                 <div class="lb-title">GLOBAL LEADERBOARD</div>
                 <div id="leaderboard-content">
@@ -881,6 +884,12 @@
             
             document.getElementById('ui-layer').classList.add('hidden');
             document.getElementById('mobile-controls').style.display = 'none';
+
+            const finalScoreEl = document.getElementById('final-score-value');
+            if (finalScoreEl) {
+                finalScoreEl.textContent = score.toString();
+            }
+
             document.getElementById('game-over-screen').classList.remove('hidden');
 
             // 점수 저장 및 리더보드 갱신
